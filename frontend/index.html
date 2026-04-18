@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TDCC Stock Screener | 籌碼與技術面篩選系統</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="background-animation">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <div class="app-container">
+        <!-- Sidebar / Control Panel -->
+        <aside class="sidebar glass-panel">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fa-solid fa-chart-line"></i>
+                </div>
+                <h2>TDCC Screener</h2>
+            </div>
+            
+            <p class="subtitle">散戶連降 × 大戶連增 × 月線過濾</p>
+
+            <div class="control-group">
+                <label for="retail-level">
+                    <i class="fa-solid fa-users"></i> 散戶定義 (預設 <= 50張)
+                </label>
+                <select id="retail-level">
+                    <option value="5">1-5級 (<= 10張)</option>
+                    <option value="9" selected>1-9級 (<= 50張)</option>
+                    <option value="11">1-11級 (<= 100張)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="large-level">
+                    <i class="fa-solid fa-user-tie"></i> 大戶定義 (預設 >= 400張)
+                </label>
+                <select id="large-level">
+                    <option value="14" selected>14-15級 (>= 400張)</option>
+                    <option value="15">15級 (>= 1000張)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>
+                    <i class="fa-solid fa-clock-rotate-left"></i> 回測掃描區間 (起迄日期)
+                </label>
+                <div style="display: flex; gap: 0.5rem;">
+                    <select id="start-date" style="flex: 1;">
+                        <option value="">起始週</option>
+                    </select>
+                    <span style="align-self: center; color: var(--text-secondary);">-</span>
+                    <select id="end-date" style="flex: 1;">
+                        <option value="">結束週</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label for="weeks">
+                    <i class="fa-regular fa-calendar-days"></i> 連續觀察週數
+                </label>
+                <div class="slider-container">
+                    <input type="range" id="weeks" min="2" max="5" value="3" oninput="document.getElementById('weeks-val').innerText = this.value + ' 週'">
+                    <span id="weeks-val" class="slider-val">3 週</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label for="ma-diff">
+                    <i class="fa-solid fa-ruler-horizontal"></i> 距離 20MA 誤差
+                </label>
+                <div class="slider-container">
+                    <input type="range" id="ma-diff" min="1" max="15" value="5" oninput="document.getElementById('ma-diff-val').innerText = '±' + this.value + '%'">
+                    <span id="ma-diff-val" class="slider-val">±5%</span>
+                </div>
+            </div>
+
+
+            <button id="screen-btn" class="btn btn-primary">
+                <i class="fa-solid fa-bolt"></i> 執行篩選
+            </button>
+            <div style="margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem;">
+                <label for="download-weeks" style="display: block; font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-secondary);">
+                    <i class="fa-solid fa-history"></i> 產生歷史資料週數
+                </label>
+                <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem;">
+                    <input type="number" id="download-weeks" value="12" min="1" max="52" style="width: 4rem; text-align: center; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: var(--text); border-radius: 4px; padding: 0.3rem;">
+                    <span style="font-size: 0.85rem; color: var(--text-secondary);">週 (將清空舊資料)</span>
+                </div>
+                <button id="update-btn" class="btn btn-secondary">
+                    <i class="fa-solid fa-cloud-arrow-down"></i> 更新 TDCC 資料
+                </button>
+            </div>
+            
+            <div id="status-msg" class="status-msg"></div>
+            
+            <div style="margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem;">
+                <strong style="display: block; font-size: 0.9rem; color: var(--text); margin-bottom: 0.5rem;">
+                    <i class="fa-solid fa-database"></i> 已有資料清單
+                </strong>
+                <div id="available-dates" class="dates-info" style="font-size: 0.85rem; color: var(--text-secondary); max-height: 11.5rem; overflow-y: auto; padding-right: 0.5rem; line-height: 1.4;">
+                    讀取中...
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="topbar">
+                <h1>篩選結果</h1>
+                <div class="stats glass-panel">
+                    <span class="stat-item"><i class="fa-solid fa-layer-group"></i> 符合檔數: <strong id="result-count">0</strong></span>
+                </div>
+            </header>
+
+            <div class="table-container glass-panel">
+                <table id="results-table">
+                    <thead>
+                        <tr>
+                            <th>觸發日期</th>
+                            <th>股票代號</th>
+                            <th>當時收盤價</th>
+                            <th>當時20MA</th>
+                            <th>乖離率</th>
+                            <th>散戶人數 (最新)</th>
+                            <th>散戶變化</th>
+                            <th>大戶持股比例</th>
+                            <th>大戶比例變化</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        <!-- Empty state -->
+                        <tr id="empty-state">
+                            <td colspan="9" class="empty-message">
+                                <div class="empty-icon"><i class="fa-solid fa-magnifying-glass-chart"></i></div>
+                                <h3>尚未執行篩選</h3>
+                                <p>請點擊左側「執行篩選」按鈕來尋找符合條件的標的。</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div id="loading-spinner" class="loading-overlay hidden">
+                    <div class="spinner"></div>
+                    <p>計算中，這可能需要幾分鐘來獲取股價資料...</p>
+                    <div class="progress-container">
+                        <div id="progress-bar" class="progress-bar"></div>
+                    </div>
+                    <div class="progress-info">
+                        <span id="progress-percent">0%</span>
+                        <span id="progress-eta">計算預計時間中...</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
